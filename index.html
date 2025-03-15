@@ -54,15 +54,16 @@
                     headers: {
                         'Authorization': 'Bearer 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',
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.href,
-                        'X-Title': 'DeepSeek Response'
+                        'HTTP-Referer': 'https://randomatti.github.io/',
+                        'X-Title': 'DeepSeek Response',
+                        'OR-API-KEY': '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'
                     },
                     body: JSON.stringify({
                         model: 'deepseek/deepseek-r1-zero:free',
                         messages: [
                             {
                                 role: 'user',
-                                content: userMessage
+                                content: decodeURIComponent(userMessage)
                             }
                         ]
                     })
@@ -74,11 +75,13 @@
                 let aiResponse = "API yanıtı alınamadı";
                 if (data && data.choices && data.choices.length > 0 && data.choices[0].message) {
                     aiResponse = data.choices[0].message.content;
+                } else if (data.error) {
+                    aiResponse = `API Hatası: ${data.error.message}`;
                 }
                 
                 // Format the response
                 const apiResponse = {
-                    durum: "Bağlantı Başarılı",
+                    durum: response.ok ? "Bağlantı Başarılı" : "Bağlantı Başarısız",
                     mesaj: userMessage,
                     deepthink: "<thinking>AI düşünüyor...</thinking>",
                     response: aiResponse,
