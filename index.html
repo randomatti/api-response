@@ -70,12 +70,18 @@
 
                 const data = await response.json();
                 
+                // API yanıtını kontrol et
+                let aiResponse = "API yanıtı alınamadı";
+                if (data && data.choices && data.choices.length > 0 && data.choices[0].message) {
+                    aiResponse = data.choices[0].message.content;
+                }
+                
                 // Format the response
                 const apiResponse = {
                     durum: "Bağlantı Başarılı",
                     mesaj: userMessage,
                     deepthink: "<thinking>AI düşünüyor...</thinking>",
-                    response: data.choices[0].message.content,
+                    response: aiResponse,
                     telegram: "https://t.me/ClonicGlobal"
                 };
 
@@ -83,12 +89,15 @@
                 document.getElementById('responseContainer').innerHTML = `
                     <h2>API Response</h2>
                     <pre>${JSON.stringify(apiResponse, null, 2)}</pre>
+                    <p>Raw API Response:</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
                 `;
 
             } catch (error) {
                 document.getElementById('responseContainer').innerHTML = `
                     <h2>Error</h2>
                     <pre>Error: ${error.message}</pre>
+                    <p>Please check your API key and connection.</p>
                 `;
             }
         }
