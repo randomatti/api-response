@@ -1,127 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek API Response</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f0f0f0;
-        }
-        .response-container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .status {
-            color: green;
-            font-weight: bold;
-        }
-        pre {
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 5px;
-            overflow-x: auto;
-        }
-    </style>
-</head>
-<body>
-    <div class="response-container" id="responseContainer">
-        <h2>API Response Loading...</h2>
-    </div>
-
+    <title>Gemma AI API</title>
     <script>
-        function getQueryParam(param) {
+        async function getResponse() {
             const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
-
-        async function fetchResponse() {
-            const userMessage = getQueryParam('DeepSeekR');
+            const userMessage = urlParams.get('Gemma-3-27B');
+            
             if (!userMessage) {
-                document.getElementById('responseContainer').innerHTML = 'No message provided in URL';
-                return;
+                return {
+                    durum: "Hata",
+                    response: "Mesaj parametresi bulunamadı",
+                    saat: new Date().toLocaleTimeString('en-US'),
+                    join: "https://t.me/ClonicGlobal"
+                };
             }
 
-            try {
-                // CORS proxy URL'i
-                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-                const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            const API_KEY = 'AIzaSyD6AKeySyigiqIqtPOo5-wCi5_28RUM-zQ';
+            const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
-                const response = await fetch(proxyUrl + apiUrl, {
+            try {
+                const response = await fetch(`${API_URL}?key=${API_KEY}`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer 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',
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://randomatti.github.io/',
-                        'X-Title': 'DeepSeek Response',
-                        'OR-API-KEY': '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',
-                        'Origin': 'https://randomatti.github.io'
                     },
                     body: JSON.stringify({
-                        model: 'deepseek/deepseek-r1-zero:free',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: decodeURIComponent(userMessage)
-                            }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 1000
+                        contents: [{
+                            parts: [{
+                                text: userMessage
+                            }]
+                        }]
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
                 const data = await response.json();
                 
-                let aiResponse = "API yanıtı alınamadı";
-                if (data && data.choices && data.choices.length > 0 && data.choices[0].message) {
-                    aiResponse = data.choices[0].message.content;
-                } else if (data.error) {
-                    aiResponse = `API Hatası: ${data.error.message}`;
-                }
-
-                const apiResponse = {
-                    durum: "Bağlantı Başarılı",
-                    mesaj: decodeURIComponent(userMessage),
-                    deepthink: "<thinking>AI düşünüyor...</thinking>",
-                    response: aiResponse,
-                    telegram: "https://t.me/ClonicGlobal"
+                return {
+                    durum: "Basarili",
+                    response: data.candidates[0].content.parts[0].text,
+                    saat: new Date().toLocaleTimeString('en-US'),
+                    join: "https://t.me/ClonicGlobal"
                 };
-
-                document.getElementById('responseContainer').innerHTML = `
-                    <h2>API Response</h2>
-                    <pre>${JSON.stringify(apiResponse, null, 2)}</pre>
-                    <p>Raw API Response:</p>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `;
 
             } catch (error) {
-                const errorResponse = {
-                    durum: "Bağlantı Başarısız",
-                    mesaj: decodeURIComponent(userMessage),
-                    deepthink: "<thinking>Bağlantı hatası</thinking>",
-                    response: `Hata: ${error.message}`,
-                    telegram: "https://t.me/ClonicGlobal"
+                return {
+                    durum: "Hata",
+                    response: "API yanıt vermedi: " + error.message,
+                    saat: new Date().toLocaleTimeString('en-US'),
+                    join: "https://t.me/ClonicGlobal"
                 };
-
-                document.getElementById('responseContainer').innerHTML = `
-                    <h2>Error</h2>
-                    <pre>${JSON.stringify(errorResponse, null, 2)}</pre>
-                `;
             }
         }
 
-        // Run when page loads
-        fetchResponse();
+        window.onload = async () => {
+            const result = await getResponse();
+            document.body.textContent = JSON.stringify(result, null, 2);
+        }
     </script>
+</head>
+<body>
 </body>
 </html>
