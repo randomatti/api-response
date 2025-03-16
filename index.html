@@ -28,16 +28,28 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
+                        model: "gemini-pro",
                         contents: [{
                             parts: [{
                                 text: userMessage
                             }]
-                        }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.9,
+                            topK: 1,
+                            topP: 1,
+                            maxOutputTokens: 2048,
+                        }
                     })
                 });
 
                 const data = await response.json();
                 
+                // Hata kontrolü
+                if (!data || !data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
+                    throw new Error("Geçersiz API yanıtı");
+                }
+
                 return {
                     durum: "Basarili",
                     response: data.candidates[0].content.parts[0].text,
@@ -48,7 +60,7 @@
             } catch (error) {
                 return {
                     durum: "Hata",
-                    response: "API yanıt vermedi: " + error.message,
+                    response: error.message,
                     saat: new Date().toLocaleTimeString('en-US'),
                     join: "https://t.me/ClonicGlobal"
                 };
