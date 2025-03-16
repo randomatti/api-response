@@ -96,6 +96,14 @@ function closeErrorModal() {
     }
 }
 
+function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+}
+
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+}
+
 // Click outside modal to close
 window.onclick = function(event) {
     const modal = document.getElementById('errorModal');
@@ -106,33 +114,59 @@ window.onclick = function(event) {
 
 // Main profile function
 async function saveProfile() {
+    showLoading();
     const username = document.getElementById('username').value.trim();
     const statusDiv = document.getElementById('status');
     const profileImage = document.getElementById('profileImage');
 
     if (!username) {
         showStatus('Please enter a username', false);
+        hideLoading();
         return;
     }
 
     try {
-        // Save Profile
-        const saveResponse = await fetch('https://greatonlinetools.com/endpoints-tools/endpoint.php', {
+        // First try with direct request
+        let saveResponse = await fetch('https://greatonlinetools.com/endpoints-tools/endpoint.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://greatonlinetools.com',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Origin': 'https://greatonlinetools.com'
             },
             body: `_frsc={"username":"${username}"}&token_=V20xV01Ga3lhR1pqUjJ4cQ==&captcha=T0RjNU1UYzBNTXpNNURRNU5UTmpNMUEzTnc9PQ==`
+        }).catch(async () => {
+            // If direct request fails, try with first proxy
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const targetUrl = encodeURIComponent('https://greatonlinetools.com/endpoints-tools/endpoint.php');
+            return await fetch(`${proxyUrl}${targetUrl}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: `_frsc={"username":"${username}"}&token_=V20xV01Ga3lhR1pqUjJ4cQ==&captcha=T0RjNU1UYzBNTXpNNURRNU5UTmpNMUEzTnc9PQ==`
+            });
+        }).catch(async () => {
+            // If first proxy fails, try with second proxy
+            const corsAnywhereUrl = 'https://cors-anywhere.herokuapp.com/';
+            return await fetch(`${corsAnywhereUrl}https://greatonlinetools.com/endpoints-tools/endpoint.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json',
+                    'Origin': 'https://greatonlinetools.com'
+                },
+                body: `_frsc={"username":"${username}"}&token_=V20xV01Ga3lhR1pqUjJ4cQ==&captcha=T0RjNU1UYzBNTXpNNURRNU5UTmpNMUEzTnc9PQ==`
+            });
         });
 
         if (!saveResponse.ok) {
             throw new Error(`HTTP error! status: ${saveResponse.status} - ${saveResponse.statusText}`);
         }
 
-        let saveData;
         const responseText = await saveResponse.text();
+        let saveData;
 
         try {
             saveData = JSON.parse(responseText);
@@ -152,25 +186,46 @@ async function saveProfile() {
             showStatus('Profile saved successfully!', true);
             
             const timestamp = Date.now();
-            const imageUrl = `https://greatonlinetools.com/endpoints-tools/pics/${username}.jpeg?v=${timestamp}`;
+            let imageUrl = `https://greatonlinetools.com/endpoints-tools/pics/${username}.jpeg?v=${timestamp}`;
             
-            profileImage.onload = () => {
-                profileImage.style.display = 'block';
+            // Try loading image with different methods
+            const loadImage = async () => {
+                try {
+                    // Direct attempt
+                    await testImageLoad(imageUrl);
+                    return imageUrl;
+                } catch {
+                    try {
+                        // First proxy attempt
+                        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                        const proxyImageUrl = `${proxyUrl}${encodeURIComponent(imageUrl)}`;
+                        await testImageLoad(proxyImageUrl);
+                        return proxyImageUrl;
+                    } catch {
+                        // Second proxy attempt
+                        const corsImageUrl = `https://cors-anywhere.herokuapp.com/${imageUrl}`;
+                        await testImageLoad(corsImageUrl);
+                        return corsImageUrl;
+                    }
+                }
             };
-            
-            profileImage.onerror = (e) => {
+
+            try {
+                const workingImageUrl = await loadImage();
+                profileImage.onload = () => {
+                    profileImage.style.display = 'block';
+                };
+                profileImage.src = workingImageUrl;
+            } catch (imgError) {
                 const imageError = {
                     type: 'Image Load Error',
                     url: imageUrl,
-                    error: e.message || 'Failed to load image',
+                    error: imgError.message || 'Failed to load image with all methods',
                     timestamp: new Date().toISOString()
                 };
                 showErrorModal('Image Error', imageError);
                 showStatus('Failed to load profile image', false);
-                profileImage.style.display = 'none';
-            };
-
-            profileImage.src = imageUrl;
+            }
         } else {
             throw new Error(saveData.msg || 'Unknown error occurred while saving profile');
         }
@@ -185,13 +240,26 @@ async function saveProfile() {
             timestamp: new Date().toISOString(),
             details: {
                 name: error.name,
-                code: error.code
+                code: error.code,
+                proxyAttempted: true
             }
         };
         
         showErrorModal('API Error', apiError);
         showStatus(`Error: ${error.message}`, false);
+    } finally {
+        hideLoading();
     }
+}
+
+// Helper function to test image loading
+function testImageLoad(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = url;
+    });
 }
 
 function showStatus(message, isSuccess) {
@@ -204,7 +272,7 @@ function showStatus(message, isSuccess) {
 
 // Check DOM elements on load
 document.addEventListener('DOMContentLoaded', () => {
-    const requiredElements = ['errorModal', 'errorMessage', 'errorDetails', 'username', 'status', 'profileImage'];
+    const requiredElements = ['errorModal', 'errorMessage', 'errorDetails', 'username', 'status', 'profileImage', 'loading'];
     const missingElements = requiredElements.filter(id => !document.getElementById(id));
     
     if (missingElements.length > 0) {
