@@ -1,4 +1,4 @@
-// Console hata yakalayıcı
+// Error handlers
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     showErrorModal('JavaScript Error', {
         message: msg,
@@ -8,7 +8,7 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-// Console yakalayıcılar
+// Console interceptors
 const originalConsole = {
     log: console.log,
     warn: console.warn,
@@ -30,7 +30,7 @@ console.error = function() {
     originalConsole.error.apply(console, arguments);
 };
 
-// Promise hata yakalayıcı
+// Promise rejection handler
 window.addEventListener('unhandledrejection', function(event) {
     showErrorModal('Unhandled Promise Rejection', {
         reason: event.reason,
@@ -38,7 +38,7 @@ window.addEventListener('unhandledrejection', function(event) {
     });
 });
 
-// Yardımcı fonksiyonlar
+// Utility functions
 function formatConsoleArgs(args) {
     return Array.from(args).map(arg => {
         if (arg instanceof Error) {
@@ -71,18 +71,32 @@ function showErrorModal(title, error) {
     const errorMessage = document.getElementById('errorMessage');
     const errorDetails = document.getElementById('errorDetails');
 
+    if (!modal || !errorMessage || !errorDetails) {
+        console.error('Modal elements not found');
+        return;
+    }
+
     errorMessage.innerHTML = `<strong>${title}</strong>`;
     
-    const formattedError = formatError(error);
-    errorDetails.textContent = JSON.stringify(formattedError, null, 2);
+    let displayError;
+    try {
+        displayError = typeof error === 'string' ? error : JSON.stringify(error, null, 2);
+    } catch (e) {
+        displayError = 'Error formatting error message: ' + e.message;
+    }
 
+    errorDetails.textContent = displayError;
     modal.style.display = 'block';
 }
 
 function closeErrorModal() {
-    document.getElementById('errorModal').style.display = 'none';
+    const modal = document.getElementById('errorModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
+// Click outside modal to close
 window.onclick = function(event) {
     const modal = document.getElementById('errorModal');
     if (event.target === modal) {
@@ -90,8 +104,9 @@ window.onclick = function(event) {
     }
 }
 
+// Main profile function
 async function saveProfile() {
-    const username = document.getElementById('username').value;
+    const username = document.getElementById('username').value.trim();
     const statusDiv = document.getElementById('status');
     const profileImage = document.getElementById('profileImage');
 
@@ -106,7 +121,8 @@ async function saveProfile() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://greatonlinetools.com'
+                'Origin': 'https://greatonlinetools.com',
+                'Accept': 'application/json'
             },
             body: `_frsc={"username":"${username}"}&token_=V20xV01Ga3lhR1pqUjJ4cQ==&captcha=T0RjNU1UYzBNTXpNNURRNU5UTmpNMUEzTnc9PQ==`
         });
@@ -115,32 +131,46 @@ async function saveProfile() {
             throw new Error(`HTTP error! status: ${saveResponse.status} - ${saveResponse.statusText}`);
         }
 
-        const saveData = await saveResponse.json();
+        let saveData;
+        const responseText = await saveResponse.text();
+
+        try {
+            saveData = JSON.parse(responseText);
+        } catch (parseError) {
+            throw new Error(`JSON Parse Error: ${parseError.message}. Raw response: ${responseText}`);
+        }
 
         if (!saveData) {
             throw new Error('Empty response received from server');
         }
 
-        if (saveData.status) {
+        if (typeof saveData.status === 'undefined') {
+            throw new Error(`Invalid response format. Response: ${JSON.stringify(saveData)}`);
+        }
+
+        if (saveData.status === true) {
             showStatus('Profile saved successfully!', true);
             
-            // Get Profile Image
             const timestamp = Date.now();
             const imageUrl = `https://greatonlinetools.com/endpoints-tools/pics/${username}.jpeg?v=${timestamp}`;
             
-            profileImage.src = imageUrl;
-            profileImage.style.display = 'block';
+            profileImage.onload = () => {
+                profileImage.style.display = 'block';
+            };
             
             profileImage.onerror = (e) => {
                 const imageError = {
                     type: 'Image Load Error',
                     url: imageUrl,
-                    error: e.message || 'Failed to load image'
+                    error: e.message || 'Failed to load image',
+                    timestamp: new Date().toISOString()
                 };
                 showErrorModal('Image Error', imageError);
                 showStatus('Failed to load profile image', false);
                 profileImage.style.display = 'none';
             };
+
+            profileImage.src = imageUrl;
         } else {
             throw new Error(saveData.msg || 'Unknown error occurred while saving profile');
         }
@@ -150,9 +180,13 @@ async function saveProfile() {
             type: 'API Error',
             endpoint: 'endpoint.php',
             username: username,
-            error: error.message,
+            message: error.message,
             stack: error.stack,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            details: {
+                name: error.name,
+                code: error.code
+            }
         };
         
         showErrorModal('API Error', apiError);
@@ -162,6 +196,18 @@ async function saveProfile() {
 
 function showStatus(message, isSuccess) {
     const statusDiv = document.getElementById('status');
-    statusDiv.textContent = message;
-    statusDiv.className = isSuccess ? 'success' : 'error';
+    if (statusDiv) {
+        statusDiv.textContent = message;
+        statusDiv.className = isSuccess ? 'success' : 'error';
+    }
 }
+
+// Check DOM elements on load
+document.addEventListener('DOMContentLoaded', () => {
+    const requiredElements = ['errorModal', 'errorMessage', 'errorDetails', 'username', 'status', 'profileImage'];
+    const missingElements = requiredElements.filter(id => !document.getElementById(id));
+    
+    if (missingElements.length > 0) {
+        console.error('Missing required DOM elements:', missingElements);
+    }
+});
