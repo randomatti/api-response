@@ -1,78 +1,96 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemma AI API</title>
-    <script>
-        async function getResponse() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userMessage = urlParams.get('Gemma-3-27B');
-            
-            if (!userMessage) {
-                return {
-                    durum: "Hata",
-                    response: "Mesaj parametresi bulunamadı",
-                    saat: new Date().toLocaleTimeString('en-US'),
-                    join: "https://t.me/ClonicGlobal"
-                };
-            }
-
-            const API_KEY = 'AIzaSyD6AKeySyigiqIqtPOo5-wCi5_28RUM-zQ';
-            const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
-
-            try {
-                const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: "gemini-pro",
-                        contents: [{
-                            parts: [{
-                                text: userMessage
-                            }]
-                        }],
-                        generationConfig: {
-                            temperature: 0.9,
-                            topK: 1,
-                            topP: 1,
-                            maxOutputTokens: 2048,
-                        }
-                    })
-                });
-
-                const data = await response.json();
-                
-                // Hata kontrolü
-                if (!data || !data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
-                    throw new Error("Geçersiz API yanıtı");
-                }
-
-                return {
-                    durum: "Basarili",
-                    response: data.candidates[0].content.parts[0].text,
-                    saat: new Date().toLocaleTimeString('en-US'),
-                    join: "https://t.me/ClonicGlobal"
-                };
-
-            } catch (error) {
-                return {
-                    durum: "Hata",
-                    response: error.message,
-                    saat: new Date().toLocaleTimeString('en-US'),
-                    join: "https://t.me/ClonicGlobal"
-                };
-            }
+    <title>Profile Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
         }
-
-        window.onload = async () => {
-            const result = await getResponse();
-            document.body.textContent = JSON.stringify(result, null, 2);
+        .form-group {
+            margin-bottom: 15px;
         }
-    </script>
+        #profileImage {
+            max-width: 320px;
+            margin-top: 20px;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+        }
+        .success {
+            color: green;
+            background: #e8f5e9;
+        }
+        .error {
+            color: red;
+            background: #ffebee;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+        }
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-modal:hover {
+            color: black;
+        }
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
 </head>
 <body>
+    <h1>Profile Manager</h1>
+    <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" required>
+        <button onclick="saveProfile()">Save Profile</button>
+    </div>
+    <div id="status"></div>
+    <img id="profileImage" style="display: none;">
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeErrorModal()">&times;</span>
+            <h2>Console Error</h2>
+            <div id="errorMessage"></div>
+            <div id="errorDetails" class="error-details"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
